@@ -1,0 +1,151 @@
+<?php
+
+/*
+  @author surf
+ * */
+
+define('SKIVERS_MANDRILL_ADMIN', 'admin/config/skivers/skivers_mandrill');
+include ('Mandrill.php');
+
+function skivers_mandrill_menu() {
+
+    $items[SKIVERS_MANDRILL_ADMIN] = array(
+        'title' => 'MANDRILL',
+        'description' => 'MANDRILL',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('skivers_mandrill_admin'),
+        'access arguments' => array('administer skivers_mandrill_admin module'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+
+
+    $items['send'] = array(
+        'title' => 'My Dashboard',
+        'page callback' => 'skivers_mandrill',
+        'access callback' => TRUE,
+        'type' => MENU_NORMAL_ITEM,
+    );
+    return $items;
+}
+
+include_once(drupal_get_path('module', 'skivers_mandrill') . '/sent_message.inc');
+
+
+function skivers_mandrill_admin() {
+    $form = array();
+    $form['skivers_mandrill_title'] = array(
+    );
+    $form['skivers_mandrill_api'] = array(
+        '#type' => 'textfield',
+        '#title' => t('API'),
+        '#default_value' => variable_get('skivers_mandrill_api', 'Mandril Enter API'),
+        '#size' => 60,
+        '#maxlength' => 125,
+        '#description' => t(""),
+        '#required' => FALSE,
+    );
+    $form['skivers_mandrill_package_provider_list_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Package Provider list id'),
+        '#default_value' => variable_get('skivers_mandrill_package_provider_list_id', 'Enter List ID'),
+        '#size' => 60,
+        '#maxlength' => 125,
+        '#description' => t(""),
+        '#required' => FALSE,
+    );
+    $form['skivers_mandrill_customer_list_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Customer list id'),
+        '#default_value' => variable_get('skivers_mandrill_customer_list_id', 'Enter List ID'),
+        '#size' => 60,
+        '#maxlength' => 125,
+        '#description' => t(""),
+        '#required' => FALSE,
+    );
+    $form['skivers_mandrill_custom_list1'] = array(
+        '#type' => 'textfield',
+        '#title' => t('LIST1 ID'),
+        '#default_value' => variable_get('skivers_mandrill_custom_list1', 'LIST ID'),
+        '#size' => 60,
+        '#maxlength' => 125,
+        '#description' => t(""),
+        '#required' => FALSE,
+    );
+    $form['skivers_mandrill_custom_list2'] = array(
+        '#type' => 'textfield',
+        '#title' => t('LIST2 ID'),
+        '#default_value' => variable_get('skivers_mandrill_custom_list2', 'LIST ID'),
+        '#size' => 60,
+        '#maxlength' => 125,
+        '#description' => t(""),
+        '#required' => FALSE,
+    );
+    $form['skivers_mandrill_markup'] = array(
+        '#markup' => ''
+    );
+    return system_settings_form($form);
+}
+
+function skivers_mandrill($fields = null) {
+
+    if (!empty($fields)) {
+        $user_from_details = $fields['user_from'];
+        $user_to_details = $fields['user_to'];
+        $user_to_email = $user_to_details->mail;
+        $user_from_name = $user_from_details->name;
+        $user_to_name = $user_to_details->name;
+        $type = 'skivers_message';
+
+        if($fields['subject'])
+        {
+            $subject = $fields['subject'];
+        }
+        else
+        {
+            $subject = 'Message Notification to ' . $user_to_name;
+        }
+    }
+
+
+
+
+    try {
+        $mandrill = new Mandrill(variable_get('skivers_mandrill_api', 'API KEY'));
+        $message = array(
+            'html' => skivers_mandrill_sent_message($type, $user_from_name, $user_to_name),
+            'text' => skivers_mandrill_sent_message($type, $user_from_name, $user_to_name),
+            'subject' => $subject,
+            'from_email' => 'from@sample.com',
+            'from_name' => 'FROM NAME GOES HERE',
+            'to' => array(
+                array(
+                    'email' => $user_to_email,
+                    'name' => $user_to_name,
+                    'type' => 'to'
+                )
+            ),
+            'important' => false,
+            'track_opens' => null,
+            'track_clicks' => null,
+            'auto_text' => null,
+            'auto_html' => true,
+            'inline_css' => null,
+            'url_strip_qs' => null,
+            'preserve_recipients' => null,
+            'view_content_link' => null,
+            'bcc_address' => null,
+            'tracking_domain' => null,
+            'signing_domain' => null,
+            'return_path_domain' => null,
+            'tags' => array($type),
+        );
+        $async = false;
+        $ip_pool = 'Main Pool';
+        $result = $mandrill->messages->send($message, $async, $ip_pool);
+    } catch (Mandrill_Error $e) {
+        // Mandrill errors are thrown as exceptions
+        echo 'A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage();
+        // A mandrill error occurred: Mandrill_Unknown_Subaccount - No subaccount exists with the id 'customer-123'
+        throw $e;
+    }
+}
